@@ -16,10 +16,28 @@ const TYPE_ICON: Record<string, string> = {
   scripture: "📖",
 };
 
-export default function Dashboard({ services }: { services: ServiceWithItems[] }) {
+export default function Dashboard({
+  services,
+  churchName,
+}: {
+  services: ServiceWithItems[];
+  churchName?: string | null;
+}) {
   const router = useRouter();
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  async function handleLogout() {
+    setLoggingOut(true);
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+      router.push("/login");
+      router.refresh();
+    } catch {
+      setLoggingOut(false);
+    }
+  }
 
   async function handleDelete(id: string, title: string) {
     if (!confirm(`Delete "${title}"? This cannot be undone.`)) return;
@@ -68,13 +86,26 @@ export default function Dashboard({ services }: { services: ServiceWithItems[] }
           <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-center text-neutral-50">
             Order Of Service
           </h1>
-          <button
-            onClick={() => router.push("/settings")}
-            title="Settings"
-            className="absolute right-6 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full hover:bg-neutral-900 flex items-center justify-center text-xl cursor-pointer"
-          >
-            ⚙️
-          </button>
+          {churchName && (
+            <p className="text-center text-sm text-neutral-500 mt-1">{churchName}</p>
+          )}
+          <div className="absolute right-6 top-1/2 -translate-y-1/2 flex items-center gap-1">
+            <button
+              onClick={() => router.push("/settings")}
+              title="Settings"
+              className="w-10 h-10 rounded-full hover:bg-neutral-900 flex items-center justify-center text-xl cursor-pointer"
+            >
+              ⚙️
+            </button>
+            <button
+              onClick={handleLogout}
+              disabled={loggingOut}
+              title="Log out"
+              className="w-10 h-10 rounded-full hover:bg-neutral-900 flex items-center justify-center text-xl cursor-pointer disabled:opacity-50"
+            >
+              🚪
+            </button>
+          </div>
         </div>
       </header>
 

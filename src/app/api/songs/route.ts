@@ -1,9 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getUserFromRequest } from "@/lib/auth";
 import type { SongInput, SongSlideInput } from "@/lib/types";
 
-export async function GET() {
-  const songs = await prisma.song.findMany({ orderBy: { title: "asc" } });
+export async function GET(req: NextRequest) {
+  const user = await getUserFromRequest(req);
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const songs = await prisma.song.findMany({
+    where: { userId: user.id },
+    orderBy: { title: "asc" },
+  });
   return NextResponse.json(
     songs.map((song) => ({
       id: song.id,
@@ -15,6 +22,9 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  const user = await getUserFromRequest(req);
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const body: SongInput = await req.json();
 
   if (!body.title || !body.title.trim()) {
@@ -26,6 +36,7 @@ export async function POST(req: NextRequest) {
 
   const song = await prisma.song.create({
     data: {
+      userId: user.id,
       title: body.title.trim(),
       slides: JSON.stringify(body.slides),
       audioUrl: body.audioUrl ?? null,

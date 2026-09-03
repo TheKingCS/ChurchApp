@@ -1,5 +1,6 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { getCurrentUser } from "@/lib/auth";
 import ServiceBuilder from "@/components/ServiceBuilder";
 import type { ItemType } from "@/lib/types";
 
@@ -8,13 +9,16 @@ export default async function EditServicePage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const user = await getCurrentUser();
+  if (!user) redirect("/login");
+
   const { id } = await params;
   const service = await prisma.service.findUnique({
     where: { id },
     include: { items: { orderBy: { order: "asc" } } },
   });
 
-  if (!service) notFound();
+  if (!service || service.userId !== user.id) notFound();
 
   return (
     <ServiceBuilder

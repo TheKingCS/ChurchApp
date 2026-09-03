@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { mkdir, writeFile } from "fs/promises";
 import path from "path";
 import { randomUUID } from "crypto";
+import { getUserFromRequest } from "@/lib/auth";
 
 const UPLOAD_DIR = path.join(process.cwd(), "public", "uploads");
 
@@ -21,6 +22,9 @@ const ALLOWED_TYPES = new Set([
 ]);
 
 export async function POST(req: NextRequest) {
+  const user = await getUserFromRequest(req);
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const formData = await req.formData();
   const file = formData.get("file");
 

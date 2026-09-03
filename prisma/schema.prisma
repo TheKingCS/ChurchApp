@@ -3,18 +3,44 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String     @id @default(cuid())
+  email        String     @unique
+  passwordHash String
+  churchName   String?
+  createdAt    DateTime   @default(now())
+  sessions     Session[]
+  services     Service[]
+  songs        Song[]
+  settings     Settings?
+}
+
+model Session {
+  id        String   @id // opaque random token; the cookie value itself
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
 }
 
 model Service {
   id            String         @id @default(cuid())
+  userId        String
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   title         String
   serviceDate   DateTime       @default(now())
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
   items         ServiceItem[]
   playbackState PlaybackState?
+
+  @@index([userId])
 }
 
 model ServiceItem {
@@ -40,15 +66,21 @@ model PlaybackState {
 
 model Song {
   id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   title     String
   slides    String // JSON-encoded array of { label, text, imageUrl }
   audioUrl  String? // optional practice/reference track, not played during presentation
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([userId])
 }
 
 model Settings {
-  id          String  @id @default("singleton")
+  id          String  @id @default(cuid())
+  userId      String  @unique
+  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   churchName  String?
   logoUrl     String?
   accentColor String  @default("#3b82f6")

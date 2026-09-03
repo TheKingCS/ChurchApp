@@ -4,6 +4,16 @@ A simple, TV-friendly app for planning and presenting your church's order of
 service — notes, songs with lyrics, pictures, and music, arranged into a
 slideshow you can display on the church's TVs and drive from a phone.
 
+## Accounts
+
+Each church signs up for its own account (`/signup`) and gets a completely
+separate, private workspace — its services, songs, and settings are never
+visible to any other account. Multiple pastors/churches can use the same
+deployment without seeing each other's data. Signing in is only required to
+plan services (the dashboard, builder, song library, settings); the
+Presenter and Remote Control pages stay link-only with no login, so a TV
+browser or a volunteer's phone can open them directly.
+
 ## How it works
 
 - **Dashboard** (`/`) — a header reading "Order Of Service" with a tile grid.
@@ -58,38 +68,70 @@ editing the same plan and one save quietly erasing the other's.
 This app doesn't need special hardware — any TV with a browser (a smart TV,
 a Fire TV/Chromecast/Roku with a browser app, or a mini PC/laptop plugged
 into the TV over HDMI) can just open the Presenter URL for a service and tap
-**Start Presentation**. Run the app on a computer on the church's network
-(see below) and browse to it from the TV using that computer's local IP
-address, e.g. `http://192.168.1.20:3000`.
+**Start Presentation**.
 
-## Getting started
+## Getting started (local development)
 
-```bash
-npm install        # installs dependencies and generates the Prisma client
-cp .env.example .env
-npm run db:push     # creates the local SQLite database
-npm run dev          # starts the app at http://localhost:3000
-```
-
-Open `http://localhost:3000` (or `http://<your-computer's-IP>:3000` from
-another device on the same network) in a browser.
-
-For a permanent installation, build and run in production mode on a
-always-on machine on the church's network:
+You need a Postgres database (SQLite doesn't survive on the hosts this app
+is meant to deploy to — see below). The fastest way to get one is a free
+[Neon](https://neon.tech) project, or run Postgres locally.
 
 ```bash
-npm run build
-npm start
+npm install                # installs dependencies and generates the Prisma client
+cp .env.example .env       # fill in DATABASE_URL and a real SESSION_SECRET
+npm run db:push            # creates the tables
+npm run dev                 # starts the app at http://localhost:3000
 ```
+
+Open `http://localhost:3000`, sign up for an account, and start planning.
+
+## Deploying so others (like your pastor) can use it
+
+Anyone with the deployed URL can sign up for their own account and get a
+private workspace — you don't deploy one copy per church, just one
+deployment that everyone signs into separately.
+
+**Recommended: [Railway](https://railway.app)** (or [Render](https://render.com))
+— both give you a real, always-on server with a persistent disk, which this
+app needs for uploaded pictures/audio to survive a redeploy (a plain
+serverless platform like Vercel's default setup wipes local files between
+requests). Free tiers exist on both.
+
+1. Push this repo to your own GitHub account (or use this one).
+2. On Railway: **New Project → Deploy from GitHub repo**, pick this repo.
+3. Add a Postgres database: **New → Database → PostgreSQL** — Railway wires
+   up `DATABASE_URL` for you automatically.
+4. Add a **Volume** mounted at `/app/public/uploads`, so uploaded files
+   persist across deploys.
+5. Set the `SESSION_SECRET` environment variable to a long random string
+   (e.g. `openssl rand -hex 32`).
+6. Set the build command to `npm run build` and the start command to
+   `npm start` (Railway usually detects these automatically for Next.js).
+7. Deploy. Railway gives you a `*.up.railway.app` URL — open it on your
+   phone, sign up, and you're in. Add it to your home screen for an
+   app-like icon (Safari: Share → Add to Home Screen; Chrome: ⋮ → Add to
+   Home screen).
+
+Once it's live, share the URL with your pastor(s) — each person signs up
+for their own account and gets their own private services, songs, and
+settings.
 
 ## Tech stack
 
 - **Next.js** (App Router) + **TypeScript** + **Tailwind CSS**
-- **Prisma** + **SQLite** for storing services and their items
-- Uploaded pictures/audio are saved to `public/uploads` and served directly
+- **Prisma** + **PostgreSQL**
+- Cookie-based sessions with bcrypt-hashed passwords (no third-party auth
+  provider, no external accounts needed)
+- Uploaded pictures/audio are saved to disk (`public/uploads`) and served
+  directly — this is why the deploy target needs a persistent disk
 
 ## Data model
 
+- `User` — one account per church/pastor: email, hashed password, church
+  name. Everything below belongs to exactly one `User` and is invisible to
+  every other account.
+- `Session` — an opaque token behind the login cookie, expiring after 30
+  days.
 - `Service` — a saved order of service: title, date, and its items.
 - `ServiceItem` — one slide: type (`notes` | `image` | `audio` | `song` |
   `countdown` | `scripture`), title, text body (notes/lyrics/verse text, or
@@ -99,9 +141,11 @@ npm start
   optional picture), and an optional practice track, offered in the Song
   editor's "Start from" dropdown.
 - `PlaybackState` — the current slide index for a service, used to keep the
-  Presenter (TV) and Control (phone) pages in sync.
-- `Settings` — a single row holding the church name, logo, and accent color
-  shown on the Presenter screen.
+  Presenter (TV) and Control (phone) pages in sync. Reachable without login
+  (keyed only by the service's id) so a TV or a volunteer's phone can use it
+  directly.
+- `Settings` — one row per user holding their church name, logo, and accent
+  color shown on the Presenter screen.
 
 ## Scripture lookup
 

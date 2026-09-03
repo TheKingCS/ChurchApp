@@ -1,19 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getUserFromRequest } from "@/lib/auth";
 import type { ServiceInput } from "@/lib/types";
 import { unlink } from "fs/promises";
 import path from "path";
 
 type Params = { params: Promise<{ id: string }> };
 
-export async function GET(_req: NextRequest, { params }: Params) {
+export async function GET(req: NextRequest, { params }: Params) {
+  const user = await getUserFromRequest(req);
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const { id } = await params;
   const service = await prisma.service.findUnique({
     where: { id },
     include: { items: { orderBy: { order: "asc" } } },
   });
 
-  if (!service) {
+  if (!service || service.userId !== user.id) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
@@ -21,6 +25,9 @@ export async function GET(_req: NextRequest, { params }: Params) {
 }
 
 export async function PUT(req: NextRequest, { params }: Params) {
+  const user = await getUserFromRequest(req);
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const { id } = await params;
   const body: ServiceInput = await req.json();
 
@@ -29,7 +36,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
   }
 
   const existing = await prisma.service.findUnique({ where: { id } });
-  if (!existing) {
+  if (!existing || existing.userId !== user.id) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
@@ -71,14 +78,17 @@ export async function PUT(req: NextRequest, { params }: Params) {
   return NextResponse.json(service);
 }
 
-export async function DELETE(_req: NextRequest, { params }: Params) {
+export async function DELETE(req: NextRequest, { params }: Params) {
+  const user = await getUserFromRequest(req);
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const { id } = await params;
 
   const existing = await prisma.service.findUnique({
     where: { id },
     include: { items: true },
   });
-  if (!existing) {
+  if (!existing || existing.userId !== user.id) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 

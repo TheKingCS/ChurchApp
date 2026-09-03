@@ -1,9 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getUserFromRequest } from "@/lib/auth";
 import type { ServiceInput } from "@/lib/types";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const user = await getUserFromRequest(req);
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const services = await prisma.service.findMany({
+    where: { userId: user.id },
     orderBy: { serviceDate: "desc" },
     include: { items: { orderBy: { order: "asc" } } },
   });
@@ -11,6 +16,9 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  const user = await getUserFromRequest(req);
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const body: ServiceInput = await req.json();
 
   if (!body.title || !body.title.trim()) {
@@ -19,6 +27,7 @@ export async function POST(req: NextRequest) {
 
   const service = await prisma.service.create({
     data: {
+      userId: user.id,
       title: body.title.trim(),
       items: {
         create: (body.items ?? []).map((item, index) => ({

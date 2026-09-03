@@ -13,7 +13,6 @@ export default function Presenter({ service }: { service: ServiceWithItems }) {
 
   const [started, setStarted] = useState(false);
   const [index, setIndex] = useState(0);
-  const audioRef = useRef<HTMLAudioElement>(null);
 
   const lastUpdatedAtRef = useRef<string | null>(null);
 
@@ -79,13 +78,6 @@ export default function Presenter({ service }: { service: ServiceWithItems }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [started, index, goTo, router]);
 
-  useEffect(() => {
-    const el = audioRef.current;
-    if (!el) return;
-    el.currentTime = 0;
-    el.play().catch(() => {});
-  }, [index]);
-
   async function handleStart() {
     try {
       await document.documentElement.requestFullscreen();
@@ -143,7 +135,7 @@ export default function Presenter({ service }: { service: ServiceWithItems }) {
           className="w-1/3 h-full cursor-pointer"
         />
         <div className="flex-1 flex items-center justify-center p-10">
-          <Slide item={item} audioRef={audioRef} />
+          <Slide key={item.id} item={item} />
         </div>
         <button
           aria-label="Next"
@@ -163,13 +155,7 @@ export default function Presenter({ service }: { service: ServiceWithItems }) {
   );
 }
 
-function Slide({
-  item,
-  audioRef,
-}: {
-  item: ServiceItem;
-  audioRef: React.RefObject<HTMLAudioElement | null>;
-}) {
+function Slide({ item }: { item: ServiceItem }) {
   switch (item.type) {
     case "image":
       return (
@@ -183,12 +169,18 @@ function Slide({
     case "audio":
       return (
         <div className="flex flex-col items-center gap-6 text-center">
-          <span className="text-7xl">🎵</span>
+          <span className="text-7xl">🔊</span>
           {item.title && (
             <h2 className="text-3xl font-semibold text-neutral-100">{item.title}</h2>
           )}
           {item.mediaUrl && (
-            <audio ref={audioRef} src={item.mediaUrl} controls autoPlay className="w-96" />
+            <audio
+              src={item.mediaUrl}
+              controls
+              autoPlay
+              loop={item.loop}
+              className="w-96"
+            />
           )}
         </div>
       );
@@ -200,12 +192,17 @@ function Slide({
               {item.title}
             </h2>
           )}
+          {item.mediaUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={item.mediaUrl}
+              alt=""
+              className="max-h-[40vh] max-w-full object-contain rounded-lg"
+            />
+          )}
           <p className="whitespace-pre-wrap text-4xl sm:text-5xl leading-snug font-medium text-neutral-50">
             {item.body}
           </p>
-          {item.mediaUrl && (
-            <audio ref={audioRef} src={item.mediaUrl} autoPlay className="hidden" />
-          )}
         </div>
       );
     case "notes":

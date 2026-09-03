@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import ServiceBuilder from "@/components/ServiceBuilder";
+import type { ItemType } from "@/lib/types";
 
 export default async function EditServicePage({
   params,
@@ -21,10 +22,11 @@ export default async function EditServicePage({
       initialTitle={service.title}
       initialItems={service.items.map((item) => ({
         id: item.id,
-        type: item.type as "notes" | "image" | "audio" | "song",
+        type: item.type as ItemType,
         title: item.title,
         body: item.body,
         mediaUrl: item.mediaUrl,
+        loop: item.loop,
       }))}
     />
   );

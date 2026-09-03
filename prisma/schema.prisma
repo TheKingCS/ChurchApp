@@ -24,8 +24,9 @@ model ServiceItem {
   order     Int
   type      String // "notes" | "image" | "audio" | "song"
   title     String?
-  body      String? // notes text or song lyrics
-  mediaUrl  String? // uploaded file path for image/audio
+  body      String? // notes text, or a song slide's lyrics
+  mediaUrl  String? // uploaded file path for image/audio, or a song slide's picture
+  loop      Boolean  @default(false) // ambient audio: loop playback
   createdAt DateTime @default(now())
 }
 
@@ -35,4 +36,12 @@ model PlaybackState {
   currentIndex Int      @default(0)
   isPlaying    Boolean  @default(false)
   updatedAt    DateTime @updatedAt
+}
+
+model Song {
+  id        String   @id @default(cuid())
+  title     String
+  slides    String // JSON-encoded array of { label, text, imageUrl }
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

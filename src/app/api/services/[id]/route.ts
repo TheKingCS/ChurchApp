@@ -47,6 +47,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
             title: item.title ?? null,
             body: item.body ?? null,
             mediaUrl: item.mediaUrl ?? null,
+            loop: item.loop ?? false,
           })),
         },
       },

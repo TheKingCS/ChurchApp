@@ -9,7 +9,7 @@ type ServiceWithItems = Service & { items: ServiceItem[] };
 const TYPE_ICON: Record<string, string> = {
   notes: "📝",
   image: "🖼️",
-  audio: "🎵",
+  audio: "🔊",
   song: "🎤",
 };
 

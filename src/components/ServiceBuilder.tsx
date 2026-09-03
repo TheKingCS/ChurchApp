@@ -3,22 +3,33 @@
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import type { ItemType, ServiceItemInput } from "@/lib/types";
+import SongEditor from "@/components/SongEditor";
 
 type BuilderItem = ServiceItemInput & { key: string };
 
 const TYPE_LABEL: Record<ItemType, string> = {
   notes: "Notes",
   image: "Picture",
-  audio: "Audio / Music",
-  song: "Song with Lyrics",
+  audio: "Ambient Music",
+  song: "Song",
 };
 
 const TYPE_ICON: Record<ItemType, string> = {
   notes: "📝",
   image: "🖼️",
-  audio: "🎵",
+  audio: "🔊",
   song: "🎤",
 };
+
+// Types a leader can add directly from the + tile. "song" opens the Song
+// editor (with its reuse dropdown) instead of the plain AddItemModal below.
+const PICKABLE_TYPES: ItemType[] = ["notes", "image", "audio", "song"];
+
+function itemSnippet(item: ServiceItemInput): string {
+  if (item.type === "notes" || item.type === "song") return item.body ?? "";
+  if (item.type === "audio" && item.loop) return "Loops";
+  return item.mediaUrl ?? "";
+}
 
 function makeKey() {
   return Math.random().toString(36).slice(2);
@@ -42,12 +53,18 @@ export default function ServiceBuilder({
   );
   const [addingType, setAddingType] = useState<ItemType | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [songEditorOpen, setSongEditorOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   function addItem(item: ServiceItemInput) {
     setItems((prev) => [...prev, { ...item, key: makeKey() }]);
     setAddingType(null);
+  }
+
+  function addItems(newItems: ServiceItemInput[]) {
+    setItems((prev) => [...prev, ...newItems.map((item) => ({ ...item, key: makeKey() }))]);
+    setSongEditorOpen(false);
   }
 
   function removeItem(key: string) {
@@ -144,9 +161,7 @@ export default function ServiceBuilder({
                     {item.title || TYPE_LABEL[item.type]}
                   </p>
                   <p className="text-xs text-neutral-500 truncate">
-                    {item.type === "notes" || item.type === "song"
-                      ? (item.body ?? "").slice(0, 40)
-                      : item.mediaUrl}
+                    {itemSnippet(item).slice(0, 40)}
                   </p>
                 </div>
 
@@ -220,7 +235,11 @@ export default function ServiceBuilder({
           onCancel={() => setPickerOpen(false)}
           onPick={(type) => {
             setPickerOpen(false);
-            setAddingType(type);
+            if (type === "song") {
+              setSongEditorOpen(true);
+            } else {
+              setAddingType(type);
+            }
           }}
         />
       )}
@@ -231,6 +250,10 @@ export default function ServiceBuilder({
           onCancel={() => setAddingType(null)}
           onAdd={addItem}
         />
+      )}
+
+      {songEditorOpen && (
+        <SongEditor onCancel={() => setSongEditorOpen(false)} onComplete={addItems} />
       )}
     </div>
   );
@@ -248,7 +271,7 @@ function TypePickerModal({
       <div className="w-full max-w-md rounded-xl border border-neutral-800 bg-neutral-950 p-6 flex flex-col gap-4">
         <h3 className="text-lg font-semibold text-neutral-100">Add to service</h3>
         <div className="grid grid-cols-2 gap-3">
-          {(Object.keys(TYPE_LABEL) as ItemType[]).map((type) => (
+          {PICKABLE_TYPES.map((type) => (
             <button
               key={type}
               onClick={() => onPick(type)}
@@ -284,13 +307,13 @@ function AddItemModal({
   const [itemTitle, setItemTitle] = useState("");
   const [body, setBody] = useState("");
   const [mediaUrl, setMediaUrl] = useState<string | null>(null);
+  const [loop, setLoop] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const needsMedia = type === "image" || type === "audio";
-  const needsBody = type === "notes" || type === "song";
-  const mediaOptional = type === "song";
+  const needsBody = type === "notes";
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -312,7 +335,7 @@ function AddItemModal({
   }
 
   function handleSubmit() {
-    if (needsMedia && !mediaOptional && !mediaUrl) {
+    if (needsMedia && !mediaUrl) {
       setUploadError("Please upload a file.");
       return;
     }
@@ -321,6 +344,7 @@ function AddItemModal({
       title: itemTitle.trim() || null,
       body: needsBody ? body : null,
       mediaUrl,
+      loop: type === "audio" ? loop : undefined,
     });
   }
 
@@ -332,44 +356,32 @@ function AddItemModal({
         </h3>
 
         <div>
-          <label className="block text-sm text-neutral-400 mb-1">
-            Title {type === "song" ? "(song name)" : "(optional)"}
-          </label>
+          <label className="block text-sm text-neutral-400 mb-1">Title (optional)</label>
           <input
             value={itemTitle}
             onChange={(e) => setItemTitle(e.target.value)}
             className="w-full rounded-lg bg-neutral-900 border border-neutral-700 px-3 py-2 text-neutral-100 focus:outline-none focus:border-blue-500"
-            placeholder={type === "song" ? "Amazing Grace" : "Welcome"}
+            placeholder="Welcome"
           />
         </div>
 
         {needsBody && (
           <div>
-            <label className="block text-sm text-neutral-400 mb-1">
-              {type === "song" ? "Lyrics for the display" : "Notes text"}
-            </label>
+            <label className="block text-sm text-neutral-400 mb-1">Notes text</label>
             <textarea
               value={body}
               onChange={(e) => setBody(e.target.value)}
               rows={8}
               className="w-full rounded-lg bg-neutral-900 border border-neutral-700 px-3 py-2 text-neutral-100 focus:outline-none focus:border-blue-500 font-mono text-sm"
-              placeholder={
-                type === "song"
-                  ? "Verse 1\nAmazing grace, how sweet the sound…"
-                  : "Announcements, prayer points, scripture…"
-              }
+              placeholder="Announcements, prayer points, scripture…"
             />
           </div>
         )}
 
-        {(needsMedia || type === "song") && (
+        {needsMedia && (
           <div>
             <label className="block text-sm text-neutral-400 mb-1">
-              {type === "image"
-                ? "Picture"
-                : type === "audio"
-                ? "Audio file"
-                : "Backing track (optional)"}
+              {type === "image" ? "Picture" : "Audio file"}
             </label>
             <input
               ref={fileInputRef}
@@ -386,6 +398,18 @@ function AddItemModal({
               <p className="text-xs text-red-400 mt-1">{uploadError}</p>
             )}
           </div>
+        )}
+
+        {type === "audio" && (
+          <label className="flex items-center gap-2 text-sm text-neutral-300 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={loop}
+              onChange={(e) => setLoop(e.target.checked)}
+              className="w-4 h-4 rounded border-neutral-700 bg-neutral-900"
+            />
+            Loop this track (good for background music)
+          </label>
         )}
 
         <div className="flex justify-end gap-3 pt-2">

@@ -16,6 +16,8 @@ const ALLOWED_TYPES = new Set([
   "audio/x-wav",
   "audio/ogg",
   "audio/aac",
+  "video/mp4",
+  "video/quicktime",
 ]);
 
 export async function POST(req: NextRequest) {

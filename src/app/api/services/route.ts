@@ -27,6 +27,7 @@ export async function POST(req: NextRequest) {
           title: item.title ?? null,
           body: item.body ?? null,
           mediaUrl: item.mediaUrl ?? null,
+          loop: item.loop ?? false,
         })),
       },
     },

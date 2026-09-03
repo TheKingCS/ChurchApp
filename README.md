@@ -13,10 +13,17 @@ slideshow you can display on the church's TVs and drive from a phone.
   delete.
 - **Builder** (`/service/new`, `/service/[id]/edit`) — add items to the
   service one at a time: **Notes** (plain text, e.g. announcements or
-  prayers), **Song with Lyrics** (title + lyrics text for the display, with
-  an optional backing track), **Picture** (upload an image), or **Audio /
-  Music** (upload an audio file). Reorder items with the up/down arrows, then
-  give the whole thing a title and save — the date is recorded automatically.
+  prayers), **Picture** (upload an image), **Ambient Music** (an audio file,
+  with an optional loop for background music), or **Song**. Reorder items
+  with the up/down arrows, then give the whole thing a title and save — the
+  date is recorded automatically.
+- **Songs** are built as a sequence of slides — one per verse, chorus, etc.
+  — each with its own lyrics and an optional picture. Because each section
+  is its own slide in the running order, a worship leader can repeat any
+  verse or chorus mid-service just by clicking back to it, rather than
+  following a fixed timeline. Songs are saved to a shared library and can be
+  reused from a dropdown in the Song editor instead of retyping lyrics for
+  every service.
 - **Presenter** (`/service/[id]/present`) — a fullscreen, click-through
   slideshow meant to be opened in the browser on the church's TV (or cast to
   it). Advance with a click, the arrow keys, or spacebar; audio/backing
@@ -66,6 +73,9 @@ npm start
 
 - `Service` — a saved order of service: title, date, and its items.
 - `ServiceItem` — one slide: type (`notes` | `image` | `audio` | `song`),
-  title, text body (notes/lyrics), and/or an uploaded media URL.
+  title, text body (notes/lyrics), and/or an uploaded media URL. A song's
+  verses/chorus are stored as multiple `song` items in sequence.
+- `Song` — a reusable library entry: title plus its slides (label, lyrics,
+  optional picture), offered in the Song editor's "Start from" dropdown.
 - `PlaybackState` — the current slide index for a service, used to keep the
   Presenter (TV) and Control (phone) pages in sync.

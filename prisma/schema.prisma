@@ -1,0 +1,38 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Service {
+  id            String         @id @default(cuid())
+  title         String
+  serviceDate   DateTime       @default(now())
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  items         ServiceItem[]
+  playbackState PlaybackState?
+}
+
+model ServiceItem {
+  id        String   @id @default(cuid())
+  serviceId String
+  service   Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  order     Int
+  type      String // "notes" | "image" | "audio" | "song"
+  title     String?
+  body      String? // notes text or song lyrics
+  mediaUrl  String? // uploaded file path for image/audio
+  createdAt DateTime @default(now())
+}
+
+model PlaybackState {
+  serviceId    String   @id
+  service      Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  currentIndex Int      @default(0)
+  isPlaying    Boolean  @default(false)
+  updatedAt    DateTime @updatedAt
+}

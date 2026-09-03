@@ -7,15 +7,6 @@ import { formatServiceDate } from "@/lib/format";
 
 type ServiceWithItems = Service & { items: ServiceItem[] };
 
-const TYPE_ICON: Record<string, string> = {
-  notes: "📝",
-  image: "🖼️",
-  audio: "🔊",
-  song: "🎤",
-  countdown: "⏱️",
-  scripture: "📖",
-};
-
 export default function Dashboard({
   services,
   churchName,
@@ -127,11 +118,6 @@ export default function Dashboard({
           </button>
 
           {services.map((service) => {
-            const typeCounts = service.items.reduce<Record<string, number>>((acc, item) => {
-              acc[item.type] = (acc[item.type] ?? 0) + 1;
-              return acc;
-            }, {});
-
             return (
               <div
                 key={service.id}
@@ -141,16 +127,12 @@ export default function Dashboard({
                   onClick={() => router.push(`/service/${service.id}/present`)}
                   className="flex-1 flex flex-col p-4 text-left w-full cursor-pointer"
                 >
-                  <div className="flex-1 flex items-center justify-center gap-1 flex-wrap text-2xl opacity-80">
-                    {Object.keys(typeCounts).length === 0 ? (
-                      <span className="text-sm text-neutral-600">Empty</span>
-                    ) : (
-                      Object.entries(typeCounts).map(([type, count]) => (
-                        <span key={type} title={`${count} ${type}`}>
-                          {TYPE_ICON[type] ?? "•"}
-                        </span>
-                      ))
-                    )}
+                  <div className="flex-1 flex items-center justify-center">
+                    <span className="text-sm text-neutral-600">
+                      {service.items.length === 0
+                        ? "Empty"
+                        : `${service.items.length} item${service.items.length === 1 ? "" : "s"}`}
+                    </span>
                   </div>
                   <div className="mt-2">
                     <h2 className="font-semibold text-neutral-50 truncate">

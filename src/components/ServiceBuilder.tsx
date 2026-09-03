@@ -41,6 +41,7 @@ export default function ServiceBuilder({
     (initialItems ?? []).map((item) => ({ ...item, key: item.id ?? makeKey() }))
   );
   const [addingType, setAddingType] = useState<ItemType | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -129,70 +130,65 @@ export default function ServiceBuilder({
         <div className="flex flex-col gap-3">
           <h2 className="text-sm text-neutral-400">Order of service items</h2>
 
-          {items.length === 0 && (
-            <p className="text-neutral-600 text-sm border border-dashed border-neutral-800 rounded-lg px-4 py-6 text-center">
-              No items yet. Add notes, songs, pictures, or audio below.
-            </p>
-          )}
-
-          {items.map((item, index) => (
-            <div
-              key={item.key}
-              className="flex items-center gap-3 rounded-lg border border-neutral-800 bg-neutral-900 px-4 py-3"
-            >
-              <span className="text-2xl">{TYPE_ICON[item.type]}</span>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-neutral-100 truncate">
-                  {item.title || TYPE_LABEL[item.type]}
-                </p>
-                <p className="text-xs text-neutral-500 truncate">
-                  {item.type === "notes" || item.type === "song"
-                    ? (item.body ?? "").slice(0, 60)
-                    : item.mediaUrl}
-                </p>
-              </div>
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => moveItem(index, -1)}
-                  disabled={index === 0}
-                  className="w-7 h-7 rounded bg-neutral-800 hover:bg-neutral-700 disabled:opacity-30 cursor-pointer"
-                  title="Move up"
-                >
-                  ↑
-                </button>
-                <button
-                  onClick={() => moveItem(index, 1)}
-                  disabled={index === items.length - 1}
-                  className="w-7 h-7 rounded bg-neutral-800 hover:bg-neutral-700 disabled:opacity-30 cursor-pointer"
-                  title="Move down"
-                >
-                  ↓
-                </button>
-                <button
-                  onClick={() => removeItem(item.key)}
-                  className="w-7 h-7 rounded bg-neutral-800 hover:bg-red-900 cursor-pointer"
-                  title="Remove"
-                >
-                  ✕
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div>
-          <h2 className="text-sm text-neutral-400 mb-2">Add an item</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {(Object.keys(TYPE_LABEL) as ItemType[]).map((type) => (
-              <button
-                key={type}
-                onClick={() => setAddingType(type)}
-                className="flex flex-col items-center justify-center gap-1 rounded-xl border border-neutral-800 hover:border-blue-500 hover:bg-neutral-900 py-4 cursor-pointer transition-colors"
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+            {items.map((item, index) => (
+              <div
+                key={item.key}
+                className="group relative aspect-square rounded-2xl border border-neutral-800 bg-neutral-900 hover:border-neutral-600 transition-colors flex flex-col p-4"
               >
-                <span className="text-2xl">{TYPE_ICON[type]}</span>
-                <span className="text-xs text-neutral-400">{TYPE_LABEL[type]}</span>
-              </button>
+                <div className="flex-1 flex items-center justify-center text-4xl opacity-80">
+                  {TYPE_ICON[item.type]}
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-neutral-100 truncate">
+                    {item.title || TYPE_LABEL[item.type]}
+                  </p>
+                  <p className="text-xs text-neutral-500 truncate">
+                    {item.type === "notes" || item.type === "song"
+                      ? (item.body ?? "").slice(0, 40)
+                      : item.mediaUrl}
+                  </p>
+                </div>
+
+                <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button
+                    onClick={() => moveItem(index, -1)}
+                    disabled={index === 0}
+                    className="w-7 h-7 rounded-full bg-neutral-800 hover:bg-neutral-700 disabled:opacity-30 cursor-pointer text-sm"
+                    title="Move up"
+                  >
+                    ↑
+                  </button>
+                  <button
+                    onClick={() => moveItem(index, 1)}
+                    disabled={index === items.length - 1}
+                    className="w-7 h-7 rounded-full bg-neutral-800 hover:bg-neutral-700 disabled:opacity-30 cursor-pointer text-sm"
+                    title="Move down"
+                  >
+                    ↓
+                  </button>
+                  <button
+                    onClick={() => removeItem(item.key)}
+                    className="w-7 h-7 rounded-full bg-neutral-800 hover:bg-red-900 cursor-pointer text-sm"
+                    title="Remove"
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
             ))}
+
+            <button
+              onClick={() => setPickerOpen(true)}
+              className="group aspect-square rounded-2xl border-2 border-dashed border-neutral-700 hover:border-blue-500 hover:bg-neutral-900 transition-colors flex flex-col items-center justify-center gap-2 cursor-pointer"
+            >
+              <span className="text-5xl font-light text-neutral-600 group-hover:text-blue-500 transition-colors leading-none">
+                +
+              </span>
+              <span className="text-sm text-neutral-500 group-hover:text-blue-400 transition-colors">
+                Add Item
+              </span>
+            </button>
           </div>
         </div>
 
@@ -219,6 +215,16 @@ export default function ServiceBuilder({
         </div>
       </main>
 
+      {pickerOpen && (
+        <TypePickerModal
+          onCancel={() => setPickerOpen(false)}
+          onPick={(type) => {
+            setPickerOpen(false);
+            setAddingType(type);
+          }}
+        />
+      )}
+
       {addingType && (
         <AddItemModal
           type={addingType}
@@ -226,6 +232,42 @@ export default function ServiceBuilder({
           onAdd={addItem}
         />
       )}
+    </div>
+  );
+}
+
+function TypePickerModal({
+  onCancel,
+  onPick,
+}: {
+  onCancel: () => void;
+  onPick: (type: ItemType) => void;
+}) {
+  return (
+    <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-20">
+      <div className="w-full max-w-md rounded-xl border border-neutral-800 bg-neutral-950 p-6 flex flex-col gap-4">
+        <h3 className="text-lg font-semibold text-neutral-100">Add to service</h3>
+        <div className="grid grid-cols-2 gap-3">
+          {(Object.keys(TYPE_LABEL) as ItemType[]).map((type) => (
+            <button
+              key={type}
+              onClick={() => onPick(type)}
+              className="flex flex-col items-center justify-center gap-1 rounded-xl border border-neutral-800 hover:border-blue-500 hover:bg-neutral-900 py-4 cursor-pointer transition-colors"
+            >
+              <span className="text-2xl">{TYPE_ICON[type]}</span>
+              <span className="text-xs text-neutral-400">{TYPE_LABEL[type]}</span>
+            </button>
+          ))}
+        </div>
+        <div className="flex justify-end">
+          <button
+            onClick={onCancel}
+            className="px-4 py-2 rounded-lg border border-neutral-700 text-neutral-300 hover:bg-neutral-900 cursor-pointer"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

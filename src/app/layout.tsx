@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Order of Service",
-  description: "Plan and present your church's order of service.",
+  title: "COS",
+  description: "COS — plan and present your church's order of service.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

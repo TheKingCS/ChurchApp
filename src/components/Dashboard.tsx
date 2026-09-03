@@ -84,8 +84,11 @@ export default function Dashboard({
       <header className="border-b border-neutral-800 bg-neutral-950/80 backdrop-blur sticky top-0 z-10">
         <div className="max-w-6xl mx-auto px-6 py-8 relative">
           <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-center text-neutral-50">
-            Order Of Service
+            COS
           </h1>
+          <p className="text-center text-xs uppercase tracking-widest text-neutral-600 mt-1">
+            Church Order of Service
+          </p>
           {churchName && (
             <p className="text-center text-sm text-neutral-500 mt-1">{churchName}</p>
           )}

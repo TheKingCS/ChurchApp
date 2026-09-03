@@ -1,23 +1,48 @@
-# Order Of Service
+# COS
 
-A simple, TV-friendly app for planning and presenting your church's order of
-service — notes, songs with lyrics, pictures, and music, arranged into a
-slideshow you can display on the church's TVs and drive from a phone.
+**COS** — Church Order of Service, and the seed of a Church Operating
+System. A simple, TV-friendly app for planning and presenting your church's
+order of service — notes, songs with lyrics, pictures, and music, arranged
+into a slideshow you can display on the church's TVs and drive from a
+phone.
 
 ## Accounts
 
-Each church signs up for its own account (`/signup`) and gets a completely
-separate, private workspace — its services, songs, and settings are never
-visible to any other account. Multiple pastors/churches can use the same
-deployment without seeing each other's data. Signing in is only required to
-plan services (the dashboard, builder, song library, settings); the
-Presenter and Remote Control pages stay link-only with no login, so a TV
-browser or a volunteer's phone can open them directly.
+Each church signs up for its own account (`/signup`, email + password, or
+Google) and gets a completely separate, private workspace — its services,
+songs, and settings are never visible to any other account. Multiple
+pastors/churches can use the same deployment without seeing each other's
+data. Signing in is only required to plan services (the dashboard, builder,
+song library, settings); the Presenter and Remote Control pages stay
+link-only with no login, so a TV browser or a volunteer's phone can open
+them directly.
+
+### Google Sign-In (optional)
+
+Email/password works out of the box; Google Sign-In is optional and only
+appears once you configure it:
+
+1. In the [Google Cloud Console](https://console.cloud.google.com/apis/credentials),
+   create (or pick) a project, then **Create Credentials → OAuth client ID**,
+   type **Web application**.
+2. Under **Authorized redirect URIs**, add every origin this app runs on,
+   each with `/api/auth/google/callback` appended — e.g. for local dev
+   `http://localhost:3000/api/auth/google/callback`, and for your deployed
+   app `https://your-app.up.railway.app/api/auth/google/callback`.
+3. Copy the generated **Client ID** and **Client secret** into this app's
+   `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` environment variables (in
+   `.env` locally, or your host's environment variable settings in
+   production), then restart/redeploy.
+4. The "Continue with Google" button appears on `/login` and `/signup`
+   automatically once both variables are set — nothing else to flip on.
+
+Signing in with Google auto-verifies the email; if that email already has a
+password account, Google is linked to it instead of creating a duplicate.
 
 ## How it works
 
-- **Dashboard** (`/`) — a header reading "Order Of Service" with a tile grid.
-  A dashed **+** tile creates a new service; every saved service becomes its
+- **Dashboard** (`/`) — a header reading "COS — Church Order of Service"
+  with a tile grid. A dashed **+** tile creates a new service; every saved service becomes its
   own tile showing its title, the date it was created, and icons for what it
   contains. Hover a tile for quick actions: present, edit, remote control, or
   delete.
@@ -127,9 +152,10 @@ settings.
 
 ## Data model
 
-- `User` — one account per church/pastor: email, hashed password, church
-  name. Everything below belongs to exactly one `User` and is invisible to
-  every other account.
+- `User` — one account per church/pastor: email, an optional hashed
+  password (absent for Google-only accounts), an optional linked Google
+  account id, and church name. Everything below belongs to exactly one
+  `User` and is invisible to every other account.
 - `Session` — an opaque token behind the login cookie, expiring after 30
   days.
 - `Service` — a saved order of service: title, date, and its items.

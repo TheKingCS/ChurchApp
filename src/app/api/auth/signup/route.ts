@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
   }
 
   const existing = await prisma.user.findUnique({ where: { email } });
-  if (existing) {
+  if (existing && existing.passwordHash) {
     return NextResponse.json(
       { error: "An account with that email already exists." },
       { status: 409 }
@@ -27,14 +27,18 @@ export async function POST(req: NextRequest) {
   }
 
   const passwordHash = await hashPassword(password);
-  const user = await prisma.user.create({
-    data: {
-      email,
-      passwordHash,
-      churchName,
-      settings: { create: { churchName } },
-    },
-  });
+  // An existing Google-only account with this email adds a password
+  // instead of erroring — same account, one more way in.
+  const user = existing
+    ? await prisma.user.update({ where: { id: existing.id }, data: { passwordHash } })
+    : await prisma.user.create({
+        data: {
+          email,
+          passwordHash,
+          churchName,
+          settings: { create: { churchName } },
+        },
+      });
 
   const { token, expiresAt } = await createSession(user.id);
   const res = NextResponse.json({ ok: true });

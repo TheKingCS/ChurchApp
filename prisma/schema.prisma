@@ -1,0 +1,89 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String     @id @default(cuid())
+  email        String     @unique
+  passwordHash String? // null for accounts created via Google Sign-In only
+  googleId     String?    @unique // Google's "sub" claim
+  name         String?
+  churchName   String?
+  createdAt    DateTime   @default(now())
+  sessions     Session[]
+  services     Service[]
+  songs        Song[]
+  settings     Settings?
+}
+
+model Session {
+  id        String   @id // opaque random token; the cookie value itself
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model Service {
+  id            String         @id @default(cuid())
+  userId        String
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title         String
+  serviceDate   DateTime       @default(now())
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  items         ServiceItem[]
+  playbackState PlaybackState?
+
+  @@index([userId])
+}
+
+model ServiceItem {
+  id        String   @id @default(cuid())
+  serviceId String
+  service   Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  order     Int
+  type      String // "notes" | "image" | "audio" | "song" | "countdown" | "scripture"
+  title     String?
+  body      String? // notes text, a song slide's lyrics, scripture text, or JSON countdown config
+  mediaUrl  String? // uploaded file path for image/audio, or a song slide's picture
+  loop      Boolean  @default(false) // ambient audio: loop playback
+  createdAt DateTime @default(now())
+}
+
+model PlaybackState {
+  serviceId    String   @id
+  service      Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  currentIndex Int      @default(0)
+  isPlaying    Boolean  @default(false)
+  updatedAt    DateTime @updatedAt
+}
+
+model Song {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  slides    String // JSON-encoded array of { label, text, imageUrl }
+  audioUrl  String? // optional practice/reference track, not played during presentation
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model Settings {
+  id          String  @id @default(cuid())
+  userId      String  @unique
+  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  churchName  String?
+  logoUrl     String?
+  accentColor String  @default("#3b82f6")
+}

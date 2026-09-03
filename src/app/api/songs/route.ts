@@ -1,0 +1,50 @@
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { getUserFromRequest } from "@/lib/auth";
+import type { SongInput, SongSlideInput } from "@/lib/types";
+
+export async function GET(req: NextRequest) {
+  const user = await getUserFromRequest(req);
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const songs = await prisma.song.findMany({
+    where: { userId: user.id },
+    orderBy: { title: "asc" },
+  });
+  return NextResponse.json(
+    songs.map((song) => ({
+      id: song.id,
+      title: song.title,
+      slides: JSON.parse(song.slides) as SongSlideInput[],
+      audioUrl: song.audioUrl,
+    }))
+  );
+}
+
+export async function POST(req: NextRequest) {
+  const user = await getUserFromRequest(req);
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const body: SongInput = await req.json();
+
+  if (!body.title || !body.title.trim()) {
+    return NextResponse.json({ error: "Title is required" }, { status: 400 });
+  }
+  if (!body.slides || body.slides.length === 0) {
+    return NextResponse.json({ error: "At least one slide is required" }, { status: 400 });
+  }
+
+  const song = await prisma.song.create({
+    data: {
+      userId: user.id,
+      title: body.title.trim(),
+      slides: JSON.stringify(body.slides),
+      audioUrl: body.audioUrl ?? null,
+    },
+  });
+
+  return NextResponse.json(
+    { id: song.id, title: song.title, slides: body.slides, audioUrl: song.audioUrl },
+    { status: 201 }
+  );
+}

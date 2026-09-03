@@ -325,21 +325,34 @@ function CountdownSlide({ item, accent }: { item: ServiceItem; accent: string })
   const done = remaining <= 0;
 
   return (
-    <div className="flex flex-col items-center gap-6 text-center">
-      {item.title && (
-        <h2 className="text-2xl font-semibold text-neutral-300 uppercase tracking-wide">
-          {item.title}
-        </h2>
+    <>
+      {item.imageUrl && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={item.imageUrl}
+          alt=""
+          className="absolute inset-0 w-full h-full object-cover opacity-30"
+        />
       )}
-      {done ? (
-        <p style={{ color: accent }} className="text-6xl sm:text-7xl font-bold">
-          {config.endMessage || "Time's up!"}
-        </p>
-      ) : (
-        <p className="text-8xl sm:text-9xl font-bold text-neutral-50 tabular-nums">
-          {minutes}:{String(seconds).padStart(2, "0")}
-        </p>
+      {item.mediaUrl && (
+        <audio src={item.mediaUrl} autoPlay loop={item.loop} className="hidden" />
       )}
-    </div>
+      <div className="relative flex flex-col items-center gap-6 text-center">
+        {item.title && (
+          <h2 className="text-2xl font-semibold text-neutral-300 uppercase tracking-wide">
+            {item.title}
+          </h2>
+        )}
+        {done ? (
+          <p style={{ color: accent }} className="text-6xl sm:text-7xl font-bold">
+            {config.endMessage || "Time's up!"}
+          </p>
+        ) : (
+          <p className="text-8xl sm:text-9xl font-bold text-neutral-50 tabular-nums">
+            {minutes}:{String(seconds).padStart(2, "0")}
+          </p>
+        )}
+      </div>
+    </>
   );
 }

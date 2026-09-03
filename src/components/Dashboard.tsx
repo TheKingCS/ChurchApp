@@ -162,7 +162,7 @@ export default function Dashboard({
                   </div>
                 </button>
 
-                <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="absolute top-2 right-2 flex gap-1">
                   <button
                     onClick={() => router.push(`/service/${service.id}/edit`)}
                     title="Edit"
@@ -198,7 +198,7 @@ export default function Dashboard({
                 <button
                   onClick={() => router.push(`/service/${service.id}/present`)}
                   title="Present on TV"
-                  className="absolute bottom-2 right-2 w-9 h-9 rounded-full bg-blue-600 hover:bg-blue-500 flex items-center justify-center text-sm opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                  className="absolute bottom-2 right-2 w-9 h-9 rounded-full bg-blue-600 hover:bg-blue-500 flex items-center justify-center text-sm cursor-pointer"
                 >
                   ▶️
                 </button>

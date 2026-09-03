@@ -81,6 +81,7 @@ export default function ServiceBuilder({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [conflict, setConflict] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   function addItem(item: ServiceItemInput) {
     setItems((prev) => [...prev, { ...item, key: makeKey() }]);
@@ -149,6 +150,21 @@ export default function ServiceBuilder({
     }
   }
 
+  async function handleDelete() {
+    if (!serviceId) return;
+    if (!confirm(`Delete "${title || "this service"}"? This cannot be undone.`)) return;
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/services/${serviceId}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Delete failed");
+      router.push("/");
+      router.refresh();
+    } catch {
+      setError("Something went wrong deleting this service. Please try again.");
+      setDeleting(false);
+    }
+  }
+
   return (
     <div className="flex-1 flex flex-col">
       <header className="border-b border-neutral-800 bg-neutral-950/80 backdrop-blur sticky top-0 z-10">
@@ -197,7 +213,7 @@ export default function ServiceBuilder({
                   </p>
                 </div>
 
-                <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="absolute top-2 right-2 flex gap-1">
                   <button
                     onClick={() => moveItem(index, -1)}
                     disabled={index === 0}
@@ -261,20 +277,33 @@ export default function ServiceBuilder({
           </p>
         )}
 
-        <div className="flex justify-end gap-3 pt-2">
-          <button
-            onClick={() => router.push("/")}
-            className="px-5 py-2.5 rounded-lg border border-neutral-700 text-neutral-300 hover:bg-neutral-900 cursor-pointer"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="px-5 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-medium disabled:opacity-50 cursor-pointer"
-          >
-            {saving ? "Saving…" : "Save Service"}
-          </button>
+        <div className="flex justify-between items-center gap-3 pt-2">
+          {isEditing ? (
+            <button
+              onClick={handleDelete}
+              disabled={deleting}
+              className="px-5 py-2.5 rounded-lg border border-red-900 text-red-400 hover:bg-red-950/50 font-medium disabled:opacity-50 cursor-pointer"
+            >
+              {deleting ? "Deleting…" : "Delete Service"}
+            </button>
+          ) : (
+            <span />
+          )}
+          <div className="flex gap-3">
+            <button
+              onClick={() => router.push("/")}
+              className="px-5 py-2.5 rounded-lg border border-neutral-700 text-neutral-300 hover:bg-neutral-900 cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="px-5 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-medium disabled:opacity-50 cursor-pointer"
+            >
+              {saving ? "Saving…" : "Save Service"}
+            </button>
+          </div>
         </div>
       </main>
 
@@ -369,6 +398,10 @@ function AddItemModal({
 
   const needsMedia = type === "image" || type === "audio";
   const needsBody = type === "notes" || type === "scripture";
+  // Countdown can optionally carry background music + a picture, same as
+  // Ambient Music, but neither is required the way Ambient Music's track is.
+  const showMediaUpload = needsMedia || type === "countdown";
+  const showLoopAndPicture = type === "audio" || type === "countdown";
 
   async function handleScriptureLookup() {
     if (!itemTitle.trim()) {
@@ -448,7 +481,9 @@ function AddItemModal({
         type,
         title: itemTitle.trim() || null,
         body: JSON.stringify({ seconds: totalSeconds, endMessage: endMessage.trim() || null }),
-        mediaUrl: null,
+        mediaUrl,
+        imageUrl,
+        loop,
       });
       return;
     }
@@ -563,10 +598,14 @@ function AddItemModal({
           </>
         )}
 
-        {needsMedia && (
+        {showMediaUpload && (
           <div>
             <label className="block text-sm text-neutral-400 mb-1">
-              {type === "image" ? "Picture" : "Audio file"}
+              {type === "image"
+                ? "Picture"
+                : type === "countdown"
+                ? "Background music (optional)"
+                : "Audio file"}
             </label>
             <input
               ref={fileInputRef}
@@ -586,7 +625,7 @@ function AddItemModal({
           <p className="text-xs text-red-400">{uploadError}</p>
         )}
 
-        {type === "audio" && (
+        {showLoopAndPicture && (
           <>
             <label className="flex items-center gap-2 text-sm text-neutral-300 cursor-pointer">
               <input

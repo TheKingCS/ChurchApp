@@ -30,6 +30,7 @@ export default async function EditServicePage({
         title: item.title,
         body: item.body,
         mediaUrl: item.mediaUrl,
+        imageUrl: item.imageUrl,
         loop: item.loop,
       }))}
       initialUpdatedAt={service.updatedAt.toISOString()}

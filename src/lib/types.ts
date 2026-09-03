@@ -6,6 +6,7 @@ export interface ServiceItemInput {
   title?: string | null;
   body?: string | null;
   mediaUrl?: string | null;
+  imageUrl?: string | null;
   loop?: boolean;
 }
 

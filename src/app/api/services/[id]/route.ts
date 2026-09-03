@@ -67,6 +67,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
             title: item.title ?? null,
             body: item.body ?? null,
             mediaUrl: item.mediaUrl ?? null,
+            imageUrl: item.imageUrl ?? null,
             loop: item.loop ?? false,
           })),
         },
@@ -96,9 +97,11 @@ export async function DELETE(req: NextRequest, { params }: Params) {
 
   // Best-effort cleanup of uploaded media files that were only used by this service.
   for (const item of existing.items) {
-    if (item.mediaUrl && item.mediaUrl.startsWith("/uploads/")) {
-      const filepath = path.join(process.cwd(), "public", item.mediaUrl);
-      unlink(filepath).catch(() => {});
+    for (const url of [item.mediaUrl, item.imageUrl]) {
+      if (url && url.startsWith("/uploads/")) {
+        const filepath = path.join(process.cwd(), "public", url);
+        unlink(filepath).catch(() => {});
+      }
     }
   }
 

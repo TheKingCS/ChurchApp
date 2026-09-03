@@ -54,6 +54,7 @@ model ServiceItem {
   title     String?
   body      String? // notes text, a song slide's lyrics, scripture text, or JSON countdown config
   mediaUrl  String? // uploaded file path for image/audio, or a song slide's picture
+  imageUrl  String? // optional background picture for ambient audio
   loop      Boolean  @default(false) // ambient audio: loop playback
   createdAt DateTime @default(now())
 }

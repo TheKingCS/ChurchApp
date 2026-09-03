@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Service, ServiceItem } from "@prisma/client";
+import { isPresentable, nextPresentableIndex } from "@/lib/navigation";
 
 type ServiceWithItems = Service & { items: ServiceItem[] };
 
@@ -19,6 +20,7 @@ export default function Control({ service }: { service: ServiceWithItems }) {
   const router = useRouter();
   const items = service.items;
   const [index, setIndex] = useState(0);
+  const [expandedNoteId, setExpandedNoteId] = useState<string | null>(null);
   const lastUpdatedAtRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -30,7 +32,7 @@ export default function Control({ service }: { service: ServiceWithItems }) {
         if (cancelled) return;
         if (data.updatedAt !== lastUpdatedAtRef.current) {
           lastUpdatedAtRef.current = data.updatedAt;
-          setIndex(data.currentIndex ?? 0);
+          setIndex(nextPresentableIndex(items, data.currentIndex ?? 0, 1));
         }
       } catch {
         // ignore transient network errors
@@ -42,7 +44,7 @@ export default function Control({ service }: { service: ServiceWithItems }) {
       cancelled = true;
       clearInterval(interval);
     };
-  }, [service.id]);
+  }, [service.id, items]);
 
   async function goTo(next: number) {
     const clamped = Math.max(0, Math.min(items.length - 1, next));
@@ -59,6 +61,20 @@ export default function Control({ service }: { service: ServiceWithItems }) {
       // will resync on next poll
     }
   }
+
+  function goNext() {
+    goTo(nextPresentableIndex(items, index + 1, 1));
+  }
+
+  function goPrev() {
+    goTo(nextPresentableIndex(items, index - 1, -1));
+  }
+
+  const upNextIndex = (() => {
+    if (index >= items.length - 1) return -1;
+    const next = nextPresentableIndex(items, index + 1, 1);
+    return next > index ? next : -1;
+  })();
 
   return (
     <div className="flex-1 flex flex-col">
@@ -87,7 +103,7 @@ export default function Control({ service }: { service: ServiceWithItems }) {
 
         <div className="flex items-center justify-center gap-4">
           <button
-            onClick={() => goTo(index - 1)}
+            onClick={goPrev}
             disabled={index <= 0}
             className="w-16 h-16 rounded-full bg-neutral-800 hover:bg-neutral-700 disabled:opacity-30 text-2xl cursor-pointer"
           >
@@ -98,7 +114,7 @@ export default function Control({ service }: { service: ServiceWithItems }) {
             <p className="text-xs text-neutral-500">of {items.length}</p>
           </div>
           <button
-            onClick={() => goTo(index + 1)}
+            onClick={goNext}
             disabled={index >= items.length - 1}
             className="w-16 h-16 rounded-full bg-blue-600 hover:bg-blue-500 disabled:opacity-30 text-2xl cursor-pointer"
           >
@@ -106,30 +122,64 @@ export default function Control({ service }: { service: ServiceWithItems }) {
           </button>
         </div>
 
-        {items[index + 1] && (
+        {upNextIndex >= 0 && (
           <p className="text-center text-sm text-neutral-500">
-            Up next: <span className="text-neutral-300">{TYPE_ICON[items[index + 1].type] ?? "•"} {items[index + 1].title || items[index + 1].type}</span>
+            Up next:{" "}
+            <span className="text-neutral-300">
+              {TYPE_ICON[items[upNextIndex].type] ?? "•"}{" "}
+              {items[upNextIndex].title || items[upNextIndex].type}
+            </span>
           </p>
         )}
 
         <div className="flex flex-col gap-2">
-          {items.map((item, i) => (
-            <button
-              key={item.id}
-              onClick={() => goTo(i)}
-              className={`flex items-center gap-3 rounded-lg border px-4 py-3 text-left cursor-pointer transition-colors ${
-                i === index
-                  ? "border-blue-500 bg-blue-950/40"
-                  : "border-neutral-800 bg-neutral-900 hover:border-neutral-600"
-              }`}
-            >
-              <span className="text-xl">{TYPE_ICON[item.type] ?? "•"}</span>
-              <span className="flex-1 min-w-0 truncate text-sm text-neutral-200">
-                {item.title || item.type}
-              </span>
-              {i === index && <span className="text-xs text-blue-400">Live</span>}
-            </button>
-          ))}
+          {items.map((item, i) => {
+            if (!isPresentable(item)) {
+              const expanded = expandedNoteId === item.id;
+              return (
+                <div
+                  key={item.id}
+                  className="rounded-lg border border-dashed border-neutral-700 bg-neutral-900/40"
+                >
+                  <button
+                    onClick={() => setExpandedNoteId(expanded ? null : item.id)}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-left cursor-pointer"
+                  >
+                    <span className="text-xl opacity-70">{TYPE_ICON[item.type] ?? "•"}</span>
+                    <span className="flex-1 min-w-0 truncate text-sm text-neutral-400">
+                      {item.title || "Note"}
+                    </span>
+                    <span className="text-xs text-neutral-600">
+                      {expanded ? "▲" : "▼"} private
+                    </span>
+                  </button>
+                  {expanded && (
+                    <p className="px-4 pb-3 text-sm text-neutral-300 whitespace-pre-wrap">
+                      {item.body}
+                    </p>
+                  )}
+                </div>
+              );
+            }
+
+            return (
+              <button
+                key={item.id}
+                onClick={() => goTo(i)}
+                className={`flex items-center gap-3 rounded-lg border px-4 py-3 text-left cursor-pointer transition-colors ${
+                  i === index
+                    ? "border-blue-500 bg-blue-950/40"
+                    : "border-neutral-800 bg-neutral-900 hover:border-neutral-600"
+                }`}
+              >
+                <span className="text-xl">{TYPE_ICON[item.type] ?? "•"}</span>
+                <span className="flex-1 min-w-0 truncate text-sm text-neutral-200">
+                  {item.title || item.type}
+                </span>
+                {i === index && <span className="text-xs text-blue-400">Live</span>}
+              </button>
+            );
+          })}
         </div>
       </main>
     </div>

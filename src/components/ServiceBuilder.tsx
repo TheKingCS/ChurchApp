@@ -355,6 +355,8 @@ function AddItemModal({
   const [itemTitle, setItemTitle] = useState("");
   const [body, setBody] = useState("");
   const [mediaUrl, setMediaUrl] = useState<string | null>(null);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [loop, setLoop] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -407,6 +409,25 @@ function AddItemModal({
     }
   }
 
+  async function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingImage(true);
+    setUploadError(null);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/upload", { method: "POST", body: formData });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Upload failed");
+      setImageUrl(data.url);
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : "Upload failed");
+    } finally {
+      setUploadingImage(false);
+    }
+  }
+
   function handleSubmit() {
     if (needsMedia && !mediaUrl) {
       setUploadError("Please upload a file.");
@@ -436,6 +457,7 @@ function AddItemModal({
       title: itemTitle.trim() || null,
       body: needsBody ? body : null,
       mediaUrl,
+      imageUrl: type === "audio" ? imageUrl : null,
       loop: type === "audio" ? loop : undefined,
     });
   }
@@ -565,15 +587,33 @@ function AddItemModal({
         )}
 
         {type === "audio" && (
-          <label className="flex items-center gap-2 text-sm text-neutral-300 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={loop}
-              onChange={(e) => setLoop(e.target.checked)}
-              className="w-4 h-4 rounded border-neutral-700 bg-neutral-900"
-            />
-            Loop this track (good for background music)
-          </label>
+          <>
+            <label className="flex items-center gap-2 text-sm text-neutral-300 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={loop}
+                onChange={(e) => setLoop(e.target.checked)}
+                className="w-4 h-4 rounded border-neutral-700 bg-neutral-900"
+              />
+              Loop this track (good for background music)
+            </label>
+
+            <div>
+              <label className="block text-sm text-neutral-400 mb-1">
+                Background picture (optional)
+              </label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleImageChange}
+                className="block w-full text-sm text-neutral-300 file:mr-3 file:rounded-lg file:border-0 file:bg-neutral-800 file:px-3 file:py-2 file:text-neutral-200 hover:file:bg-neutral-700"
+              />
+              {uploadingImage && <p className="text-xs text-neutral-500 mt-1">Uploading…</p>}
+              {imageUrl && !uploadingImage && (
+                <p className="text-xs text-green-500 mt-1">Uploaded ✓</p>
+              )}
+            </div>
+          </>
         )}
 
         <div className="flex justify-end gap-3 pt-2">

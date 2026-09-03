@@ -92,21 +92,21 @@ export default function Dashboard({
           {churchName && (
             <p className="text-center text-sm text-neutral-500 mt-1">{churchName}</p>
           )}
-          <div className="absolute right-6 top-1/2 -translate-y-1/2 flex items-center gap-1">
+          <div className="absolute right-6 top-8 flex items-center gap-1">
             <button
               onClick={() => router.push("/settings")}
               title="Settings"
-              className="w-10 h-10 rounded-full hover:bg-neutral-900 flex items-center justify-center text-xl cursor-pointer"
+              className="w-10 h-10 rounded-full text-neutral-400 hover:text-neutral-100 hover:bg-neutral-900 flex items-center justify-center cursor-pointer"
             >
-              ⚙️
+              <GearIcon />
             </button>
             <button
               onClick={handleLogout}
               disabled={loggingOut}
               title="Log out"
-              className="w-10 h-10 rounded-full hover:bg-neutral-900 flex items-center justify-center text-xl cursor-pointer disabled:opacity-50"
+              className="w-10 h-10 rounded-full text-neutral-400 hover:text-neutral-100 hover:bg-neutral-900 flex items-center justify-center cursor-pointer disabled:opacity-50"
             >
-              🚪
+              <LogoutIcon />
             </button>
           </div>
         </div>
@@ -214,5 +214,24 @@ export default function Dashboard({
         )}
       </main>
     </div>
+  );
+}
+
+function GearIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <circle cx="12" cy="12" r="3" />
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+    </svg>
+  );
+}
+
+function LogoutIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+      <polyline points="16 17 21 12 16 7" />
+      <line x1="21" y1="12" x2="9" y2="12" />
+    </svg>
   );
 }

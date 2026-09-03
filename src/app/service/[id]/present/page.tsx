@@ -8,12 +8,19 @@ export default async function PresentPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const service = await prisma.service.findUnique({
-    where: { id },
-    include: { items: { orderBy: { order: "asc" } } },
-  });
+  const [service, settings] = await Promise.all([
+    prisma.service.findUnique({
+      where: { id },
+      include: { items: { orderBy: { order: "asc" } } },
+    }),
+    prisma.settings.upsert({
+      where: { id: "singleton" },
+      update: {},
+      create: { id: "singleton" },
+    }),
+  ]);
 
   if (!service) notFound();
 
-  return <Presenter service={service} />;
+  return <Presenter service={service} settings={settings} />;
 }

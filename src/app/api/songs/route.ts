@@ -9,6 +9,7 @@ export async function GET() {
       id: song.id,
       title: song.title,
       slides: JSON.parse(song.slides) as SongSlideInput[],
+      audioUrl: song.audioUrl,
     }))
   );
 }
@@ -27,11 +28,12 @@ export async function POST(req: NextRequest) {
     data: {
       title: body.title.trim(),
       slides: JSON.stringify(body.slides),
+      audioUrl: body.audioUrl ?? null,
     },
   });
 
   return NextResponse.json(
-    { id: song.id, title: song.title, slides: body.slides },
+    { id: song.id, title: song.title, slides: body.slides, audioUrl: song.audioUrl },
     { status: 201 }
   );
 }

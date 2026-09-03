@@ -4,12 +4,20 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Service, ServiceItem } from "@prisma/client";
 import { formatServiceDate } from "@/lib/format";
+import type { CountdownBody, SettingsData } from "@/lib/types";
 
 type ServiceWithItems = Service & { items: ServiceItem[] };
 
-export default function Presenter({ service }: { service: ServiceWithItems }) {
+export default function Presenter({
+  service,
+  settings,
+}: {
+  service: ServiceWithItems;
+  settings: SettingsData;
+}) {
   const router = useRouter();
   const items = service.items;
+  const accent = settings.accentColor || "#3b82f6";
 
   const [started, setStarted] = useState(false);
   const [index, setIndex] = useState(0);
@@ -98,6 +106,10 @@ export default function Presenter({ service }: { service: ServiceWithItems }) {
   if (!started) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center gap-6 text-center px-6">
+        {settings.logoUrl && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={settings.logoUrl} alt="" className="max-h-20 max-w-[200px] object-contain mb-2" />
+        )}
         <p className="text-neutral-500 uppercase tracking-widest text-sm">
           {formatServiceDate(service.serviceDate)}
         </p>
@@ -106,7 +118,8 @@ export default function Presenter({ service }: { service: ServiceWithItems }) {
         <button
           onClick={handleStart}
           disabled={items.length === 0}
-          className="mt-4 px-8 py-4 rounded-full bg-blue-600 hover:bg-blue-500 text-white text-lg font-semibold disabled:opacity-40 cursor-pointer"
+          style={{ backgroundColor: accent }}
+          className="mt-4 px-8 py-4 rounded-full hover:opacity-90 text-white text-lg font-semibold disabled:opacity-40 cursor-pointer"
         >
           ▶ Start Presentation
         </button>
@@ -128,14 +141,22 @@ export default function Presenter({ service }: { service: ServiceWithItems }) {
 
   return (
     <div className="fixed inset-0 bg-black flex flex-col select-none">
+      {settings.logoUrl && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={settings.logoUrl}
+          alt=""
+          className="absolute top-4 left-4 max-h-10 max-w-[140px] object-contain opacity-70 z-10"
+        />
+      )}
       <div className="flex-1 relative flex">
         <button
           aria-label="Previous"
           onClick={() => goTo(index - 1)}
           className="w-1/3 h-full cursor-pointer"
         />
-        <div className="flex-1 flex items-center justify-center p-10">
-          <Slide key={item.id} item={item} />
+        <div className="flex-1 flex items-center justify-center p-10 pb-24">
+          <Slide key={item.id} item={item} accent={accent} />
         </div>
         <button
           aria-label="Next"
@@ -155,7 +176,7 @@ export default function Presenter({ service }: { service: ServiceWithItems }) {
   );
 }
 
-function Slide({ item }: { item: ServiceItem }) {
+function Slide({ item, accent }: { item: ServiceItem; accent: string }) {
   switch (item.type) {
     case "image":
       return (
@@ -185,13 +206,11 @@ function Slide({ item }: { item: ServiceItem }) {
         </div>
       );
     case "song":
+      // Deliberately no title/label heading here — the congregation should
+      // just see the lyrics, not internal organizing labels like "Amazing
+      // Grace — Verse 1" (those stay in the builder tiles and Control list).
       return (
         <div className="flex flex-col items-center gap-6 text-center max-w-4xl">
-          {item.title && (
-            <h2 className="text-2xl font-semibold text-blue-400 uppercase tracking-wide">
-              {item.title}
-            </h2>
-          )}
           {item.mediaUrl && (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -205,6 +224,24 @@ function Slide({ item }: { item: ServiceItem }) {
           </p>
         </div>
       );
+    case "scripture":
+      return (
+        <div className="flex flex-col items-center gap-8 text-center max-w-4xl">
+          <p className="whitespace-pre-wrap text-4xl sm:text-5xl leading-snug italic font-medium text-neutral-50">
+            {item.body}
+          </p>
+          {item.title && (
+            <p
+              style={{ color: accent }}
+              className="text-xl font-semibold uppercase tracking-wide"
+            >
+              — {item.title}
+            </p>
+          )}
+        </div>
+      );
+    case "countdown":
+      return <CountdownSlide item={item} accent={accent} />;
     case "notes":
     default:
       return (
@@ -218,4 +255,48 @@ function Slide({ item }: { item: ServiceItem }) {
         </div>
       );
   }
+}
+
+function CountdownSlide({ item, accent }: { item: ServiceItem; accent: string }) {
+  const config: CountdownBody = (() => {
+    try {
+      return JSON.parse(item.body ?? "{}");
+    } catch {
+      return { seconds: 0 };
+    }
+  })();
+
+  const [remaining, setRemaining] = useState(config.seconds ?? 0);
+
+  useEffect(() => {
+    const deadline = Date.now() + (config.seconds ?? 0) * 1000;
+    const interval = setInterval(() => {
+      setRemaining(Math.max(0, Math.round((deadline - Date.now()) / 1000)));
+    }, 250);
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const minutes = Math.floor(remaining / 60);
+  const seconds = remaining % 60;
+  const done = remaining <= 0;
+
+  return (
+    <div className="flex flex-col items-center gap-6 text-center">
+      {item.title && (
+        <h2 className="text-2xl font-semibold text-neutral-300 uppercase tracking-wide">
+          {item.title}
+        </h2>
+      )}
+      {done ? (
+        <p style={{ color: accent }} className="text-6xl sm:text-7xl font-bold">
+          {config.endMessage || "Time's up!"}
+        </p>
+      ) : (
+        <p className="text-8xl sm:text-9xl font-bold text-neutral-50 tabular-nums">
+          {minutes}:{String(seconds).padStart(2, "0")}
+        </p>
+      )}
+    </div>
+  );
 }

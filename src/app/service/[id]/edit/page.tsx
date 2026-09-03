@@ -28,6 +28,7 @@ export default async function EditServicePage({
         mediaUrl: item.mediaUrl,
         loop: item.loop,
       }))}
+      initialUpdatedAt={service.updatedAt.toISOString()}
     />
   );
 }

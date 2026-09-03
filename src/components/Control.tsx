@@ -11,6 +11,8 @@ const TYPE_ICON: Record<string, string> = {
   image: "🖼️",
   audio: "🔊",
   song: "🎤",
+  countdown: "⏱️",
+  scripture: "📖",
 };
 
 export default function Control({ service }: { service: ServiceWithItems }) {
@@ -103,6 +105,12 @@ export default function Control({ service }: { service: ServiceWithItems }) {
             ▶
           </button>
         </div>
+
+        {items[index + 1] && (
+          <p className="text-center text-sm text-neutral-500">
+            Up next: <span className="text-neutral-300">{TYPE_ICON[items[index + 1].type] ?? "•"} {items[index + 1].title || items[index + 1].type}</span>
+          </p>
+        )}
 
         <div className="flex flex-col gap-2">
           {items.map((item, i) => (

@@ -1,4 +1,4 @@
-export type ItemType = "notes" | "image" | "audio" | "song";
+export type ItemType = "notes" | "image" | "audio" | "song" | "countdown" | "scripture";
 
 export interface ServiceItemInput {
   id?: string;
@@ -12,6 +12,7 @@ export interface ServiceItemInput {
 export interface ServiceInput {
   title: string;
   items: ServiceItemInput[];
+  baseUpdatedAt?: string;
 }
 
 export interface SongSlideInput {
@@ -23,8 +24,20 @@ export interface SongSlideInput {
 export interface SongInput {
   title: string;
   slides: SongSlideInput[];
+  audioUrl?: string | null;
 }
 
 export interface Song extends SongInput {
   id: string;
+}
+
+export interface CountdownBody {
+  seconds: number;
+  endMessage?: string;
+}
+
+export interface SettingsData {
+  churchName?: string | null;
+  logoUrl?: string | null;
+  accentColor: string;
 }

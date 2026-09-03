@@ -22,9 +22,9 @@ model ServiceItem {
   serviceId String
   service   Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
   order     Int
-  type      String // "notes" | "image" | "audio" | "song"
+  type      String // "notes" | "image" | "audio" | "song" | "countdown" | "scripture"
   title     String?
-  body      String? // notes text, or a song slide's lyrics
+  body      String? // notes text, a song slide's lyrics, scripture text, or JSON countdown config
   mediaUrl  String? // uploaded file path for image/audio, or a song slide's picture
   loop      Boolean  @default(false) // ambient audio: loop playback
   createdAt DateTime @default(now())
@@ -42,6 +42,14 @@ model Song {
   id        String   @id @default(cuid())
   title     String
   slides    String // JSON-encoded array of { label, text, imageUrl }
+  audioUrl  String? // optional practice/reference track, not played during presentation
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model Settings {
+  id          String  @id @default("singleton")
+  churchName  String?
+  logoUrl     String?
+  accentColor String  @default("#3b82f6")
 }

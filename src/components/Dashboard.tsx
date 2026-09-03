@@ -12,11 +12,14 @@ const TYPE_ICON: Record<string, string> = {
   image: "🖼️",
   audio: "🔊",
   song: "🎤",
+  countdown: "⏱️",
+  scripture: "📖",
 };
 
 export default function Dashboard({ services }: { services: ServiceWithItems[] }) {
   const router = useRouter();
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
 
   async function handleDelete(id: string, title: string) {
     if (!confirm(`Delete "${title}"? This cannot be undone.`)) return;
@@ -32,13 +35,46 @@ export default function Dashboard({ services }: { services: ServiceWithItems[] }
     }
   }
 
+  async function handleDuplicate(service: ServiceWithItems) {
+    setDuplicatingId(service.id);
+    try {
+      const res = await fetch("/api/services", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: `${service.title} (Copy)`,
+          items: service.items.map((item) => ({
+            type: item.type,
+            title: item.title,
+            body: item.body,
+            mediaUrl: item.mediaUrl,
+            loop: item.loop,
+          })),
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to duplicate");
+      const created = await res.json();
+      router.push(`/service/${created.id}/edit`);
+    } catch {
+      alert("Could not duplicate this service. Please try again.");
+      setDuplicatingId(null);
+    }
+  }
+
   return (
     <div className="flex-1 flex flex-col">
       <header className="border-b border-neutral-800 bg-neutral-950/80 backdrop-blur sticky top-0 z-10">
-        <div className="max-w-6xl mx-auto px-6 py-8">
+        <div className="max-w-6xl mx-auto px-6 py-8 relative">
           <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-center text-neutral-50">
             Order Of Service
           </h1>
+          <button
+            onClick={() => router.push("/settings")}
+            title="Settings"
+            className="absolute right-6 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full hover:bg-neutral-900 flex items-center justify-center text-xl cursor-pointer"
+          >
+            ⚙️
+          </button>
         </div>
       </header>
 
@@ -106,6 +142,14 @@ export default function Dashboard({ services }: { services: ServiceWithItems[] }
                     className="w-8 h-8 rounded-full bg-neutral-800 hover:bg-neutral-700 flex items-center justify-center text-sm cursor-pointer"
                   >
                     📱
+                  </button>
+                  <button
+                    onClick={() => handleDuplicate(service)}
+                    disabled={duplicatingId === service.id}
+                    title="Duplicate"
+                    className="w-8 h-8 rounded-full bg-neutral-800 hover:bg-neutral-700 flex items-center justify-center text-sm cursor-pointer disabled:opacity-50"
+                  >
+                    📋
                   </button>
                   <button
                     onClick={() => handleDelete(service.id, service.title)}

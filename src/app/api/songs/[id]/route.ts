@@ -10,7 +10,12 @@ export async function GET(_req: NextRequest, { params }: Params) {
   if (!song) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
-  return NextResponse.json({ id: song.id, title: song.title, slides: JSON.parse(song.slides) });
+  return NextResponse.json({
+    id: song.id,
+    title: song.title,
+    slides: JSON.parse(song.slides),
+    audioUrl: song.audioUrl,
+  });
 }
 
 export async function PUT(req: NextRequest, { params }: Params) {
@@ -31,10 +36,19 @@ export async function PUT(req: NextRequest, { params }: Params) {
 
   const song = await prisma.song.update({
     where: { id },
-    data: { title: body.title.trim(), slides: JSON.stringify(body.slides) },
+    data: {
+      title: body.title.trim(),
+      slides: JSON.stringify(body.slides),
+      audioUrl: body.audioUrl ?? null,
+    },
   });
 
-  return NextResponse.json({ id: song.id, title: song.title, slides: body.slides });
+  return NextResponse.json({
+    id: song.id,
+    title: song.title,
+    slides: body.slides,
+    audioUrl: song.audioUrl,
+  });
 }
 
 export async function DELETE(_req: NextRequest, { params }: Params) {

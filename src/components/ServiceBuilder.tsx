@@ -12,6 +12,8 @@ const TYPE_LABEL: Record<ItemType, string> = {
   image: "Picture",
   audio: "Ambient Music",
   song: "Song",
+  countdown: "Countdown",
+  scripture: "Scripture",
 };
 
 const TYPE_ICON: Record<ItemType, string> = {
@@ -19,15 +21,35 @@ const TYPE_ICON: Record<ItemType, string> = {
   image: "🖼️",
   audio: "🔊",
   song: "🎤",
+  countdown: "⏱️",
+  scripture: "📖",
 };
 
 // Types a leader can add directly from the + tile. "song" opens the Song
 // editor (with its reuse dropdown) instead of the plain AddItemModal below.
-const PICKABLE_TYPES: ItemType[] = ["notes", "image", "audio", "song"];
+const PICKABLE_TYPES: ItemType[] = [
+  "notes",
+  "image",
+  "audio",
+  "song",
+  "countdown",
+  "scripture",
+];
 
 function itemSnippet(item: ServiceItemInput): string {
-  if (item.type === "notes" || item.type === "song") return item.body ?? "";
+  if (item.type === "notes" || item.type === "song" || item.type === "scripture") {
+    return item.body ?? "";
+  }
   if (item.type === "audio" && item.loop) return "Loops";
+  if (item.type === "countdown") {
+    try {
+      const parsed = JSON.parse(item.body ?? "{}");
+      const minutes = Math.round((parsed.seconds ?? 0) / 60);
+      return `${minutes} min countdown`;
+    } catch {
+      return "";
+    }
+  }
   return item.mediaUrl ?? "";
 }
 
@@ -39,10 +61,12 @@ export default function ServiceBuilder({
   serviceId,
   initialTitle,
   initialItems,
+  initialUpdatedAt,
 }: {
   serviceId?: string;
   initialTitle?: string;
   initialItems?: ServiceItemInput[];
+  initialUpdatedAt?: string;
 }) {
   const router = useRouter();
   const isEditing = Boolean(serviceId);
@@ -56,6 +80,7 @@ export default function ServiceBuilder({
   const [songEditorOpen, setSongEditorOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [conflict, setConflict] = useState(false);
 
   function addItem(item: ServiceItemInput) {
     setItems((prev) => [...prev, { ...item, key: makeKey() }]);
@@ -91,6 +116,7 @@ export default function ServiceBuilder({
       return;
     }
     setError(null);
+    setConflict(false);
     setSaving(true);
     try {
       const payload = {
@@ -99,6 +125,7 @@ export default function ServiceBuilder({
           void key;
           return rest;
         }),
+        baseUpdatedAt: initialUpdatedAt,
       };
       const res = await fetch(
         isEditing ? `/api/services/${serviceId}` : "/api/services",
@@ -108,6 +135,11 @@ export default function ServiceBuilder({
           body: JSON.stringify(payload),
         }
       );
+      if (res.status === 409) {
+        setConflict(true);
+        setSaving(false);
+        return;
+      }
       if (!res.ok) throw new Error("Save failed");
       router.push("/");
       router.refresh();
@@ -206,6 +238,22 @@ export default function ServiceBuilder({
             </button>
           </div>
         </div>
+
+        {conflict && (
+          <div className="text-sm text-amber-300 bg-amber-950/50 border border-amber-800 rounded-lg px-4 py-3 flex items-center justify-between gap-3">
+            <span>
+              Someone else saved changes to this service while you were editing. Your
+              changes here weren&rsquo;t saved — reload the page to see the latest
+              version, then redo anything you still need.
+            </span>
+            <button
+              onClick={() => window.location.reload()}
+              className="shrink-0 px-3 py-1.5 rounded-lg bg-amber-800 hover:bg-amber-700 text-amber-50 cursor-pointer"
+            >
+              Reload
+            </button>
+          </div>
+        )}
 
         {error && (
           <p className="text-sm text-red-400 bg-red-950/50 border border-red-900 rounded-lg px-4 py-2">
@@ -310,10 +358,35 @@ function AddItemModal({
   const [loop, setLoop] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [scriptureLoading, setScriptureLoading] = useState(false);
+  const [scriptureError, setScriptureError] = useState<string | null>(null);
+  const [countdownMinutes, setCountdownMinutes] = useState("5");
+  const [countdownSeconds, setCountdownSeconds] = useState("0");
+  const [endMessage, setEndMessage] = useState("Let's begin!");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const needsMedia = type === "image" || type === "audio";
-  const needsBody = type === "notes";
+  const needsBody = type === "notes" || type === "scripture";
+
+  async function handleScriptureLookup() {
+    if (!itemTitle.trim()) {
+      setScriptureError("Enter a reference first, e.g. \"John 3:16\".");
+      return;
+    }
+    setScriptureLoading(true);
+    setScriptureError(null);
+    try {
+      const res = await fetch(`/api/scripture?ref=${encodeURIComponent(itemTitle.trim())}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Lookup failed");
+      setItemTitle(data.reference);
+      setBody(data.text);
+    } catch (err) {
+      setScriptureError(err instanceof Error ? err.message : "Lookup failed");
+    } finally {
+      setScriptureLoading(false);
+    }
+  }
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -339,6 +412,25 @@ function AddItemModal({
       setUploadError("Please upload a file.");
       return;
     }
+    if (type === "scripture" && !body.trim()) {
+      setScriptureError("Look up a reference or type the verse text in yourself.");
+      return;
+    }
+    if (type === "countdown") {
+      const totalSeconds =
+        (parseInt(countdownMinutes, 10) || 0) * 60 + (parseInt(countdownSeconds, 10) || 0);
+      if (totalSeconds <= 0) {
+        setUploadError("Set a countdown longer than zero.");
+        return;
+      }
+      onAdd({
+        type,
+        title: itemTitle.trim() || null,
+        body: JSON.stringify({ seconds: totalSeconds, endMessage: endMessage.trim() || null }),
+        mediaUrl: null,
+      });
+      return;
+    }
     onAdd({
       type,
       title: itemTitle.trim() || null,
@@ -355,27 +447,98 @@ function AddItemModal({
           {TYPE_LABEL[type]}
         </h3>
 
-        <div>
-          <label className="block text-sm text-neutral-400 mb-1">Title (optional)</label>
-          <input
-            value={itemTitle}
-            onChange={(e) => setItemTitle(e.target.value)}
-            className="w-full rounded-lg bg-neutral-900 border border-neutral-700 px-3 py-2 text-neutral-100 focus:outline-none focus:border-blue-500"
-            placeholder="Welcome"
-          />
-        </div>
+        {type === "scripture" ? (
+          <div>
+            <label className="block text-sm text-neutral-400 mb-1">Reference</label>
+            <div className="flex gap-2">
+              <input
+                value={itemTitle}
+                onChange={(e) => setItemTitle(e.target.value)}
+                className="flex-1 rounded-lg bg-neutral-900 border border-neutral-700 px-3 py-2 text-neutral-100 focus:outline-none focus:border-blue-500"
+                placeholder="John 3:16"
+              />
+              <button
+                onClick={handleScriptureLookup}
+                disabled={scriptureLoading}
+                className="px-4 py-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-sm text-neutral-200 disabled:opacity-50 cursor-pointer shrink-0"
+              >
+                {scriptureLoading ? "Looking up…" : "Look Up"}
+              </button>
+            </div>
+            {scriptureError && (
+              <p className="text-xs text-red-400 mt-1">{scriptureError}</p>
+            )}
+          </div>
+        ) : (
+          <div>
+            <label className="block text-sm text-neutral-400 mb-1">
+              {type === "countdown" ? "Label (optional)" : "Title (optional)"}
+            </label>
+            <input
+              value={itemTitle}
+              onChange={(e) => setItemTitle(e.target.value)}
+              className="w-full rounded-lg bg-neutral-900 border border-neutral-700 px-3 py-2 text-neutral-100 focus:outline-none focus:border-blue-500"
+              placeholder={type === "countdown" ? "Service starts in" : "Welcome"}
+            />
+          </div>
+        )}
 
         {needsBody && (
           <div>
-            <label className="block text-sm text-neutral-400 mb-1">Notes text</label>
+            <label className="block text-sm text-neutral-400 mb-1">
+              {type === "scripture" ? "Verse text" : "Notes text"}
+            </label>
             <textarea
               value={body}
               onChange={(e) => setBody(e.target.value)}
-              rows={8}
+              rows={type === "scripture" ? 4 : 8}
               className="w-full rounded-lg bg-neutral-900 border border-neutral-700 px-3 py-2 text-neutral-100 focus:outline-none focus:border-blue-500 font-mono text-sm"
-              placeholder="Announcements, prayer points, scripture…"
+              placeholder={
+                type === "scripture"
+                  ? "Look up a reference above, or type the verse in yourself…"
+                  : "Announcements, prayer points, scripture…"
+              }
             />
           </div>
+        )}
+
+        {type === "countdown" && (
+          <>
+            <div className="flex gap-3">
+              <div className="flex-1">
+                <label className="block text-sm text-neutral-400 mb-1">Minutes</label>
+                <input
+                  type="number"
+                  min={0}
+                  value={countdownMinutes}
+                  onChange={(e) => setCountdownMinutes(e.target.value)}
+                  className="w-full rounded-lg bg-neutral-900 border border-neutral-700 px-3 py-2 text-neutral-100 focus:outline-none focus:border-blue-500"
+                />
+              </div>
+              <div className="flex-1">
+                <label className="block text-sm text-neutral-400 mb-1">Seconds</label>
+                <input
+                  type="number"
+                  min={0}
+                  max={59}
+                  value={countdownSeconds}
+                  onChange={(e) => setCountdownSeconds(e.target.value)}
+                  className="w-full rounded-lg bg-neutral-900 border border-neutral-700 px-3 py-2 text-neutral-100 focus:outline-none focus:border-blue-500"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm text-neutral-400 mb-1">
+                Message when it ends
+              </label>
+              <input
+                value={endMessage}
+                onChange={(e) => setEndMessage(e.target.value)}
+                className="w-full rounded-lg bg-neutral-900 border border-neutral-700 px-3 py-2 text-neutral-100 focus:outline-none focus:border-blue-500"
+                placeholder="Let's begin!"
+              />
+            </div>
+          </>
         )}
 
         {needsMedia && (
@@ -394,10 +557,11 @@ function AddItemModal({
             {mediaUrl && !uploading && (
               <p className="text-xs text-green-500 mt-1">Uploaded ✓</p>
             )}
-            {uploadError && (
-              <p className="text-xs text-red-400 mt-1">{uploadError}</p>
-            )}
           </div>
+        )}
+
+        {uploadError && (
+          <p className="text-xs text-red-400">{uploadError}</p>
         )}
 
         {type === "audio" && (

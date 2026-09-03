@@ -33,6 +33,19 @@ export async function PUT(req: NextRequest, { params }: Params) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
+  // Optimistic concurrency: if the editor loaded this service and someone
+  // else has saved changes since, refuse to silently clobber their edit.
+  if (body.baseUpdatedAt && existing.updatedAt.toISOString() !== body.baseUpdatedAt) {
+    return NextResponse.json(
+      {
+        error: "conflict",
+        message:
+          "This service was updated by someone else while you were editing. Reload to see the latest version before saving.",
+      },
+      { status: 409 }
+    );
+  }
+
   // Replace items wholesale: delete old, create new, in a transaction.
   const service = await prisma.$transaction(async (tx) => {
     await tx.serviceItem.deleteMany({ where: { serviceId: id } });

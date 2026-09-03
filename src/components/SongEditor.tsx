@@ -7,6 +7,27 @@ function emptySlide(): SongSlideInput {
   return { label: "", text: "", imageUrl: null };
 }
 
+const SECTION_LABEL_PATTERN =
+  /^(verse\s*\d*|chorus|pre-?chorus|bridge|refrain|tag|intro|outro|ending|interlude)\s*:?$/i;
+
+// Splits a pasted block of lyrics into slides at blank lines. If a block's
+// first line looks like a section label (e.g. "Verse 1", "Chorus") it's
+// pulled out as the slide's label instead of being shown as lyrics.
+function splitLyricsIntoSlides(text: string): SongSlideInput[] {
+  return text
+    .split(/\n\s*\n/)
+    .map((block) => block.trim())
+    .filter(Boolean)
+    .map((block) => {
+      const lines = block.split("\n");
+      const first = lines[0].trim();
+      if (lines.length > 1 && SECTION_LABEL_PATTERN.test(first)) {
+        return { label: first, text: lines.slice(1).join("\n").trim(), imageUrl: null };
+      }
+      return { label: null, text: block, imageUrl: null };
+    });
+}
+
 export default function SongEditor({
   onCancel,
   onComplete,
@@ -19,9 +40,13 @@ export default function SongEditor({
   const [selectedSongId, setSelectedSongId] = useState<string>("new");
   const [title, setTitle] = useState("");
   const [slides, setSlides] = useState<SongSlideInput[]>([emptySlide()]);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [uploadingAudio, setUploadingAudio] = useState(false);
   const [uploadingIndex, setUploadingIndex] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const [importText, setImportText] = useState("");
 
   useEffect(() => {
     (async () => {
@@ -43,13 +68,42 @@ export default function SongEditor({
     if (id === "new") {
       setTitle("");
       setSlides([emptySlide()]);
+      setAudioUrl(null);
       return;
     }
     const song = songs.find((s) => s.id === id);
     if (song) {
       setTitle(song.title);
       setSlides(song.slides.map((s) => ({ ...s })));
+      setAudioUrl(song.audioUrl ?? null);
     }
+  }
+
+  async function handleAudioChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingAudio(true);
+    setError(null);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/upload", { method: "POST", body: formData });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Upload failed");
+      setAudioUrl(data.url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Upload failed");
+    } finally {
+      setUploadingAudio(false);
+    }
+  }
+
+  function handleSplitImport() {
+    const parsed = splitLyricsIntoSlides(importText);
+    if (parsed.length === 0) return;
+    setSlides(parsed);
+    setImportText("");
+    setImportOpen(false);
   }
 
   function updateSlide(index: number, patch: Partial<SongSlideInput>) {
@@ -110,7 +164,7 @@ export default function SongEditor({
     setError(null);
     setSaving(true);
     try {
-      const payload = { title: title.trim(), slides: cleanSlides };
+      const payload = { title: title.trim(), slides: cleanSlides, audioUrl };
       const res = await fetch(
         selectedSongId === "new" ? "/api/songs" : `/api/songs/${selectedSongId}`,
         {
@@ -164,6 +218,70 @@ export default function SongEditor({
             placeholder="Amazing Grace"
             className="w-full rounded-lg bg-neutral-900 border border-neutral-700 px-3 py-2 text-neutral-100 focus:outline-none focus:border-blue-500"
           />
+        </div>
+
+        <div>
+          <label className="block text-sm text-neutral-400 mb-1">
+            Practice track (optional)
+          </label>
+          <input
+            type="file"
+            accept="audio/*"
+            onChange={handleAudioChange}
+            className="block w-full text-sm text-neutral-300 file:mr-3 file:rounded-lg file:border-0 file:bg-neutral-800 file:px-3 file:py-2 file:text-neutral-200 hover:file:bg-neutral-700"
+          />
+          {uploadingAudio && <p className="text-xs text-neutral-500 mt-1">Uploading…</p>}
+          {audioUrl && !uploadingAudio && (
+            <div className="mt-2 flex items-center gap-3">
+              <audio src={audioUrl} controls className="h-8" />
+              <button
+                onClick={() => setAudioUrl(null)}
+                className="text-xs text-red-400 hover:text-red-300 cursor-pointer"
+              >
+                Remove
+              </button>
+            </div>
+          )}
+          <p className="text-xs text-neutral-600 mt-1">
+            For reference/rehearsal only — it isn&rsquo;t played during the presentation,
+            since worship is usually sung live.
+          </p>
+        </div>
+
+        <div className="rounded-lg border border-neutral-800 bg-neutral-900">
+          <button
+            onClick={() => setImportOpen((v) => !v)}
+            className="w-full flex items-center justify-between px-4 py-3 text-sm text-neutral-300 hover:text-neutral-100 cursor-pointer"
+          >
+            <span>🎵 Import from audio + lyrics</span>
+            <span className="text-neutral-500">{importOpen ? "▲" : "▼"}</span>
+          </button>
+          {importOpen && (
+            <div className="px-4 pb-4 flex flex-col gap-3">
+              <p className="text-xs text-neutral-500">
+                Upload the track above, then paste the full lyrics here — I&rsquo;ll split
+                it into slides at each blank line. Start a section with a label like
+                &ldquo;Verse 1&rdquo; or &ldquo;Chorus&rdquo; on its own line to have it
+                picked up automatically. This will replace the slides below.
+              </p>
+              <textarea
+                value={importText}
+                onChange={(e) => setImportText(e.target.value)}
+                rows={8}
+                className="w-full rounded-lg bg-neutral-950 border border-neutral-700 px-3 py-2 text-neutral-100 focus:outline-none focus:border-blue-500 font-mono text-sm"
+                placeholder={
+                  "Verse 1\nAmazing grace, how sweet the sound\nThat saved a wretch like me\n\nChorus\nMy chains are gone\nI've been set free"
+                }
+              />
+              <button
+                onClick={handleSplitImport}
+                disabled={!importText.trim()}
+                className="self-start px-4 py-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-sm text-neutral-200 disabled:opacity-50 cursor-pointer"
+              >
+                Split into Slides
+              </button>
+            </div>
+          )}
         </div>
 
         <div className="flex flex-col gap-3">

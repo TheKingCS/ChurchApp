@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block body %}
+<h1>Review queue</h1>
+{% if not waiting %}<p class="muted">Nothing waiting for review. Start one with <code>studio run "Case name"</code>.</p>{% endif %}
+{% for j in waiting %}
+<div class="card"><a href="{{ url_for('job', slug=j.slug) }}"><strong>{{ j.case }}</strong></a>
+  <span class="pill rendered">needs review</span> <span class="muted small">{{ j.updated }}</span></div>
+{% endfor %}
+<h2>All jobs</h2>
+<table>
+  <tr><th>Case</th><th>Status</th><th>Updated</th></tr>
+  {% for j in jobs %}
+  <tr><td>{% if j.status in ['scripted','rendered','approved','rejected'] %}<a href="{{ url_for('job', slug=j.slug) }}">{{ j.case }}</a>{% else %}{{ j.case }}{% endif %}</td>
+      <td><span class="pill {{ j.status }}">{{ j.status }}</span></td><td class="muted small">{{ j.updated }}</td></tr>
+  {% endfor %}
+</table>
+{% endblock %}

@@ -1,0 +1,30 @@
+# Copy to config.toml (next to pyproject.toml) and edit. Every key is optional.
+
+[llm]
+model = "claude-opus-5-5"
+effort = "high"            # low | medium | high | xhigh | max
+max_searches = 15          # web searches allowed per research run
+
+[video]
+formats = ["vertical"]     # "vertical" (9:16 Reels/Shorts/TikTok) and/or "horizontal" (16:9 YouTube)
+target_seconds = 75        # rough narration length the script aims for
+source_audio_volume = 0.12 # original footage audio under the narration (0 = mute)
+font = "/usr/share/fonts/opentype/inter/Inter-Bold.otf"
+caption_font_name = "Inter"
+caption_fonts_dir = "/usr/share/fonts/opentype/inter"
+
+[tts]
+backend = "edge"           # "edge" (free Microsoft neural voices) or "silent" (testing)
+voice = "en-US-GuyNeural"
+rate = "+5%"
+
+[media]
+# Media is downloaded automatically ONLY from these sources. Anything else the
+# research step finds is listed as a candidate and waits for `studio media approve`.
+allowed_domain_suffixes = [".gov", ".mil"]
+allowed_domains = []       # e.g. "phoenix.gov", "nypdnews.com"
+# Official agency channels on YouTube/Facebook, matched against the uploader's
+# channel id, channel URL or @handle as reported by yt-dlp.
+allowed_channels = []      # e.g. "@PhoenixPolice", "UCxxxxxxxxxxxxxxxxxxxx"
+max_clip_minutes = 45
+max_height = 1080

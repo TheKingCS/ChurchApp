@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}{{ job.case }}{% endblock %}
+{% block body %}
+<p><a href="{{ url_for('index') }}">← Queue</a></p>
+<h1>{{ script.title if script else job.case }}</h1>
+<p class="muted">{{ job.case }} · <span class="pill {{ job.status }}">{{ job.status }}</span>
+  {% if casefile %} · Legal status: {{ casefile.legal_status }}{% endif %}</p>
+
+<div class="grid">
+  <div>
+    {% for v in videos %}
+      <p class="small muted">{{ v }}</p>
+      <video controls preload="metadata" src="{{ url_for('file', slug=job.slug, name=v) }}"></video>
+    {% else %}<p class="muted">Not rendered yet.</p>{% endfor %}
+
+    {% if job.status == 'rendered' %}
+    <form method="post" action="{{ url_for('decide', slug=job.slug) }}" class="card" style="margin-top:14px">
+      <label class="small muted" for="note">Review note</label>
+      <textarea id="note" name="note" placeholder="What you checked, or what to fix"></textarea>
+      <p class="small muted">I watched the full video, checked the claims below against their sources, and the media credits are correct.</p>
+      <button class="approve" name="decision" value="approve">Approve → outbox</button>
+      <button class="reject" name="decision" value="reject">Reject</button>
+    </form>
+    {% elif job.review_notes %}<div class="card small">Review note: {{ job.review_notes }}</div>{% endif %}
+  </div>
+
+  <div>
+    {% if script %}
+    {% if script.fact_check_notes %}
+    <div class="card warn"><strong>Check before approving</strong>
+      <ul>{% for n in script.fact_check_notes %}<li>{{ n }}</li>{% endfor %}</ul></div>
+    {% endif %}
+    <div class="card small"><strong>Description</strong><br>{{ script.description }}<br>
+      <span class="muted">{{ script.hashtags | map('string') | join(' ') }}</span></div>
+
+    <h2>Script and sources</h2>
+    {% for seg in script.segments %}
+    <div class="card">
+      <div>{{ seg.narration }}</div>
+      <div class="small muted" style="margin-top:6px">
+        Visual: {{ seg.visual.kind }}{% if seg.visual.media_id %} {{ seg.visual.media_id }} @ {{ '%.1f' % seg.visual.start_seconds }}s{% endif %}{% if seg.visual.kind == 'card' %} “{{ seg.visual.card_text }}”{% endif %}
+        · Sources:
+        {% for sid in seg.source_ids %}{% set s = sources.get(sid) %}
+          {% if s %}<a href="{{ s.url }}" target="_blank" rel="noopener" title="{{ s.title }}">[{{ sid }}] {{ s.publisher }}</a>{% else %}[{{ sid }}?]{% endif %}
+        {% else %}<strong style="color:var(--accent)">none — verify this line</strong>{% endfor %}
+      </div>
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    <h2>Media and provenance</h2>
+    <table class="small">
+      <tr><th>ID</th><th>Status</th><th>Publisher</th><th>How it was cleared</th></tr>
+      {% for i in items %}
+      <tr><td>{{ i.id }}</td><td>{{ i.status }}</td>
+          <td><a href="{{ i.url }}" target="_blank" rel="noopener">{{ i.publisher or i.channel or i.url }}</a><br><span class="muted">{{ i.kind }} · {{ i.description }}</span></td>
+          <td>{{ i.provenance or i.error or 'waiting: studio media approve ' ~ job.slug ~ ' ' ~ i.id }}</td></tr>
+      {% endfor %}
+    </table>
+    <p class="small"><a href="{{ url_for('file', slug=job.slug, name='research/dossier.md') }}" target="_blank">Full research dossier</a></p>
+  </div>
+</div>
+{% endblock %}
